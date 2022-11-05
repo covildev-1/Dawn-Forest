@@ -2,6 +2,8 @@ extends Node
 class_name PlayerStats
 
 
+export(NodePath) onready var player = get_node(player) as KinematicBody2D
+# Deffense var (serve para indicar se o jogador está defendendo ou não).
 var shielding: bool = false
 # Base stats vars (valores padrões de status).
 var base_health: int = 15
@@ -73,8 +75,12 @@ func update_health(type: String, value: int) -> void:
 			verify_shield(value)
 			
 			if current_health <= 0:
+				player.dead = true
 				pass
 			else:
+				# A animação de hit deve ter prioridade sob a animação de ataque para evitar bugs na colisão do ataque quando o jogador é atacado enquanto efetua um ataque. Com isso, se o jogador estiver no meio de um ataque e sofrer o ataque de um inimigo, a animação de ataque será encerrada na hora.
+				player.on_hit = true
+				player.attacking = false
 				pass
 
 
@@ -100,3 +106,8 @@ func update_mana(type: String, value: int) -> void:
 		
 		'Decrease':
 			current_mana -= value
+
+
+func _process(_delta) -> void:
+	if Input.is_action_just_pressed("ui_select"):
+		update_health('Decrease', 5)

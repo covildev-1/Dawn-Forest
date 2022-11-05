@@ -2,6 +2,8 @@ extends Sprite
 class_name PlayerTexture
 
 
+# Aqui a colisão de AttackArea etsá sendo pega para que possamos desativá-la quando o personagem estiver no estado de hit.
+export(NodePath) onready var attack_collision = get_node(attack_collision) as CollisionShape2D
 # Aqui está sendo pego o nó AnimationPlayer e o colocando como valor de animation. Foi feita dessa forma porque AnimationPlayer é irmão de Sprite, e por causa disso a "conversa" entre eles é mais difícil. Assim a var animation tem acesso as propriedades do nó AnimationPlayer.
 export(NodePath) onready var animation = get_node(animation) as AnimationPlayer
 export(NodePath) onready var player = get_node(player) as KinematicBody2D
@@ -18,7 +20,9 @@ var crouching_off: bool = false
 func animate(direction: Vector2) -> void:
 	verify_position(direction)
 	
-	if player.attacking or player.defending or player.crouching or player.next_to_wall():
+	if player.on_hit or player.dead:
+		hit_behavior()
+	elif player.attacking or player.defending or player.crouching or player.next_to_wall():
 		action_behavior()
 	elif direction.y != 0:
 		vertical_behavior(direction)
@@ -58,6 +62,17 @@ func horizontal_behavior(direction: Vector2) -> void:
 		animation.play("Idle")
 
 
+func hit_behavior() -> void:
+	player.set_physics_process(false)
+	# Aqui a colisão de AttackArea está sendo desabilitada.
+	attack_collision.set_deferred("disabled", true)
+	
+	if player.dead:
+		animation.play("Dead")
+	elif player.on_hit:
+		animation.play("Hit")
+
+
 func action_behavior() -> void:
 	if player.next_to_wall():
 		animation.play("WallSlide")
@@ -94,3 +109,15 @@ func _on_animation_finished(anim_name: String):
 		"AttackRight":
 			normal_attack = false
 			player.attacking = false
+			
+		"Hit":
+			player.on_hit = false
+			# Mesma lógica do match landing.
+			player.set_physics_process(true)
+			
+			# Esta condição serve para que, quando o personagem estiver no estado de hit e o jogador estiver pressionando o botão de defesa, assim que o estado de hit acabar, o estado de defesa seja iniciado (isso cabe para o estado de defending porque é um estado que fica true enquanto o jogador estiver pressionando o botão, assim como o crouching).
+			if player.defending:
+				animation.play("Shield")
+			
+			if player.crouching:
+				animation.play("Couch")
